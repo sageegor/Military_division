@@ -1,0 +1,26 @@
+{% extends 'index.html' %}
+{% load static %}
+{% block title %}Корзина{% endblock %}
+
+{% block content %}
+    <div class="zayavka">Текущая заявка</div>
+    <div class="row">
+        <div class="number">1</div>
+        <div class="GMD_1">
+            <div class="info">
+                <img url='http://127.0.0.1:9000/militarydivision/69%20GMD.jpg'>
+            </div>
+            <div class="down">
+                <p></p>
+                <p class="card-button">69-я гвардейская мотострелковая дивизия</p>
+                <p class="tekst_1">69 - я гвардейская стрелковая дивизия. Сформирована в феврале 1943 года и служила до окончания Великой Отечественной войны. После войны дивизия в 1953 году была преобразована в 70-ю гвардейскую стрелковую дивизию. Повторно реформирована в мае 2024 года.</p>
+                <div class="podr">
+                    <a href="{% url 'order_url' id=1 %}" class="title"style="">Подробнее</a>
+                </div>
+            </div>
+        </div>
+        <div class="plus">+</div>
+        <div class="number">1</div>
+        <div class="minus">-</div>
+    </div>
+{% endblock %}

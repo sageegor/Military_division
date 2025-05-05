@@ -1,0 +1,19 @@
+{% extends 'index.html' %}
+{% load static %}
+{% block title %}{{ division.name }}{% endblock %}
+
+{% block content %}
+<h1 class="GMD">{{ division.name }}</h1>
+
+<div class="pod">
+    <div class="GMD69">
+        <img src="{{ division.image_url }}" 
+             alt="{{ division.name }}">
+        <div class="text">
+            <p class="tekst">
+                {{ division.description }}
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

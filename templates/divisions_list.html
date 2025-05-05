@@ -1,0 +1,19 @@
+{% load static %}
+<div class="containers">
+    {% for division in divisions %}
+<div class="division-card">
+    <div class="info">
+        <img src="{{ division.image_url }}" 
+             alt="{{ division.name }}">
+    </div>
+    <div class="down">
+        <p></p>
+        <p class="card-button1">{{ division.name|linebreaksbr }}</p>
+        <div class="podr1">
+            <a href="{% url 'order_url' id=division.id %}" class="title"style="">Подробнее</a>
+        </div>
+        <div class="add">Добавить</div>
+    </div>
+</div>
+{% endfor %}
+</div>

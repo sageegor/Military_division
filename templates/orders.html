@@ -1,0 +1,71 @@
+{% extends 'index.html' %}
+{% load static %}
+{% block title %}Список услуг{% endblock %}
+
+{% block content %}
+<div class="search_container">
+    <input class="search_input" type="text" id="searchInput" 
+           placeholder="Поиск объединений, соединений и частей"
+           oninput="handleSearch()">
+    <button class="search_bottom" onclick="handleSearch()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+    </button>
+</div>
+    
+<div id="divisionsContainer" class="containers">
+    {% include 'divisions_list.html' with divisions=divisions %}
+</div> 
+
+<script>
+function handleSearch() {
+    const query = document.getElementById('searchInput').value;
+    
+    fetch(`?q=${encodeURIComponent(query)}`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        fetch(`/get_divisions_partial/?q=${encodeURIComponent(query)}`)
+            .then(r => r.text())
+            .then(html => {
+                document.getElementById('divisionsContainer').innerHTML = html;
+                // Инициализируем обработчики событий для новых элементов
+                initCartButtons();
+            });
+    });
+}
+
+function initCartButtons() {
+    // Обработчики для кнопок добавления
+    document.querySelectorAll('.add-form').forEach(form => {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const response = await fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                document.querySelector('.cart-summary a').textContent = 
+                    `Корзина (${data.cart_count} товаров)`;
+            }
+        });
+    });
+}
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', initCartButtons);
+</script>
+<div class="cart-summary">
+    <a href="{% url 'cart_detail' %}">Корзина ({{ cart_count }} товаров)</a>
+</div>
+
+{% endblock %}

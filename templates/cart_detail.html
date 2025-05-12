@@ -1,0 +1,130 @@
+{% extends 'index.html' %}
+{% load static %}
+{% block title %}Корзина{% endblock %}
+{% block extra_css %}
+<style>
+    .row {
+        display: flex;
+        align-items: center;
+        margin-bottom: 15px;
+        padding: 10px;
+    }
+
+    .quantity-controls {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-left: 0;
+    }
+
+    .quantity-form {
+        display: inline-block;
+        margin: -10px;
+    }
+
+    .minus {
+        cursor: pointer;
+        border: 2px solid black;
+        background: none;
+        color: black;
+        width: 30px;
+        height: 30px;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 20px 70px 20px -300px;
+    }
+    .plus {
+        cursor: pointer;
+        border: 2px solid black;
+        background: none;
+        color: black;
+        width: 30px;
+        height: 30px;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 20px 120px 20px -210px;
+    }
+
+    .plus:hover, .minus:hover {
+        background-color: #d14e15;
+        color: white;
+    }
+
+    .number {
+        min-width: 30px;
+        text-align: center;
+        font-weight: bold;
+        margin:20px 5px 20px 5px;
+    }
+    
+    .number_1 {
+        border: 2px solid black;
+        font-size: 40px;
+        min-width: 30px;
+        text-align: center;
+        font-weight: bold;
+        margin:20px 230px 20px -250px ;
+    }
+
+    .empty-cart {
+        text-align: center;
+        padding: 20px;
+        color: #666;
+    }
+
+    .GMD_1 {
+        border: 1px solid black;
+        border-radius: 0;
+        background-color: #FFFFFF;
+        margin: 20px 250px 5px -15px;
+        display: flex;
+        flex-direction: row;
+        justify-content:normal ;
+        width: 900px;
+        height: 220px;
+    }
+    
+    .card-button {margin: 30px 5px 15px 25px;font-size: 20px;}  
+    
+    .tekst_1 {font-size: 16px;margin: 15px 20px 15px 20px;max-width: 700px;}  
+    
+    .podr {text-align: left; margin: 15px 650px 0 20px;border: 2px solid rgba(209, 78, 21, 1);padding: 5px;font-size: 16px;}
+</style>
+{% endblock %}
+{% block content %}
+    <div class="zayavka">Текущая заявка</div>
+    {% for item in cart_items %}
+    <div class="row">
+        <div class="number">{{ forloop.counter }}</div>
+        <div class="GMD_1">
+            <div class="info">
+                <img src="{{ item.division.image_url }}" alt="{{ item.division.name }}">
+            </div>
+            <div class="down">
+                <p class="card-button">{{ item.division.name }}</p>
+                <p class="tekst_1">{{ item.division.description }}</p>
+                <div class="podr">
+                    <a href="{% url 'order_url' id=item.division.id %}" class="title">Подробнее</a>
+                </div>
+            </div>
+        </div>
+        <div class="quantity-controls">
+            <form method="post" action="{% url 'remove_from_cart' item.division.id %}" class="quantity-form">
+                {% csrf_token %}
+                <button type="submit" class="minus">-</button>
+            </form>
+            <div class="number_1">{{ item.quantity }}</div>
+            <form method="post" action="{% url 'add_to_cart' item.division.id %}" class="quantity-form">
+                {% csrf_token %}
+                <button type="submit" class="plus">+</button>
+            </form>
+        </div>
+    </div>
+    {% empty %}
+    <div class="empty-cart">Корзина пуста</div>
+    {% endfor %}
+{% endblock %}

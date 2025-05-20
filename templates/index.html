@@ -1,0 +1,43 @@
+<!doctype html>
+{% load static %}
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %} Военные силы Российской Федерации{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'static/css/styles.css' %}?t={{ now|date:'U' }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+<div class="space">
+   <div class="header">
+       <div class="emblem_RF">
+         <img src="{% static 'static/images/emblem_RF1.png' %}" alt=" ">
+       </div>
+       <div class="map_MD">
+         <img src="{% static 'static/images/map_MD.png' %}" alt=" ">
+     </div>
+       <div class="two_box">
+           <div class="black_box">
+               <img src="{% static 'static/images/black_box.png' %}" alt="">
+           </div>
+           <div class="orange_box">
+               <img src="{% static 'static/images/orange_box.png' %}" alt="">
+           </div>
+       </div>
+
+       <h1 class="vsrf">Военные силы<br>Российской Федерации</h1>
+       <h1 class="VSRF">
+           <a class="VSRF_1" href="{% url 'servises' %}" >ВС РФ</a>
+       </h1>
+    </div>
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+    <footer>
+        <div class="container">
+            <p></p>
+        </div>
+    </footer>
+</div>
+</body>
+</html>

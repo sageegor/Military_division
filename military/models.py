@@ -22,8 +22,16 @@ class UserProfile(models.Model):
     def __str__(self):
         return f"Профиль {self.user.username}"
 
-
 class Order(models.Model):
+    title_choices = [
+        ('Leningrad Military District', 'Ленинградский военный округ'),
+        ('Moscow Military District', 'Московский военный округ'),
+        ('Central Military District', 'Центральный военный округ'),
+        ('Southern Military District', 'Южный военный округ '),
+        ('Eastern Military District', 'Восточный Военный округ'),
+        ('None', 'Нет')
+     ]
+
     STATUS_CHOICES = [
         ('draft', 'Черновик'),
         ('formed', 'Сформирована'),
@@ -35,12 +43,15 @@ class Order(models.Model):
     status = models.CharField('Статус', max_length=20, choices=STATUS_CHOICES, default='draft')
     created_at = models.DateTimeField('Дата создания', auto_now_add=True)
     creator = models.ForeignKey(User,on_delete=models.PROTECT,verbose_name='Создатель',related_name='created_orders')
+    title = models.CharField (verbose_name='Округ', max_length=50, choices=title_choices, default='None')
 
     class Meta:
         verbose_name = 'Заявка'
         verbose_name_plural = 'Заявки'
         ordering = ['-created_at']
 
+    def __str__(self):
+        return f"Order #{self.id} - {self.title}"
 
 class OrderDivision(models.Model):
     order = models.ForeignKey(Order,on_delete=models.PROTECT,verbose_name='Заявка')
@@ -48,7 +59,6 @@ class OrderDivision(models.Model):
     quantity = models.PositiveIntegerField('Количество', default=1)
     is_main = models.BooleanField('Основное', default=False)
     sort_order = models.PositiveIntegerField('Порядок', default=0)
-
 
     class Meta:
         verbose_name = 'Связь заявки и подразделения'

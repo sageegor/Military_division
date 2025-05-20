@@ -44,7 +44,7 @@ class Migration(migrations.Migration):
                 ('notes', models.TextField(blank=True, verbose_name='Примечания')),
                 ('creator', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='created_orders', to=settings.AUTH_USER_MODEL, verbose_name='Создатель')),
                 ('moderator', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='moderated_orders', to=settings.AUTH_USER_MODEL, verbose_name='Модератор')),
-            ],
+                ('title', models.CharField(verbose_name='Округ', max_length=50, choices=[('Leningrad Military District', 'Ленинградский военный округ'),('Moscow Military District', 'Московский военный округ'),('Central Military District', 'Центральный военный округ'),('Southern Military District', 'Южный военный округ '),('Eastern Military District', 'Восточный Военный округ'),('None', 'Нет')], default='None'))],
             options={
                 'verbose_name': 'Заявка',
                 'verbose_name_plural': 'Заявки',

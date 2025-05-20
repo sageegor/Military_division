@@ -28,6 +28,8 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = '__all__'
-        read_only_fields = ['status', 'created_at', 'creator', 'moderator',]
+        fields = ['id', 'title', 'status', 'moderator', 'creator', 'divisions']
+
+
+
 

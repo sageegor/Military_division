@@ -24,10 +24,10 @@ from military import views
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
-from military.views import UserViewSet
+from military.views import UserViewSet, ServicesListView
 
 router = DefaultRouter()
-router.register(r'user', views.UserViewSet, basename='user')
+router.register(r'users', UserViewSet, basename='user')
 
 schema_view = get_schema_view(
    openapi.Info(
@@ -39,7 +39,7 @@ schema_view = get_schema_view(
       license=openapi.License(name="BSD License"),
    ),
    public=True,
-   permission_classes=(permissions.AllowAny,),
+   permission_classes=(permissions.AllowAny,)
 )
 
 urlpatterns = [
@@ -64,8 +64,11 @@ urlpatterns = [
                   path('api/order-divisions/<int:pk>/', views.OrderDivisionDetail.as_view(),name='orderdivision-detail'),
                   path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
                   path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
-                  path('login/',  views.login_view, name='login'),
-                  path('logout/', views.logout_view, name='logout'),
-                  path('user/', UserViewSet.as_view({'post': 'post'}), name='user')
+                  path('api/register/', views.register_view, name='register'),
+                  path('api/login/',  views. login_view, name='login'),
+                  path('api/logout/', views.logout_view, name='logout'),
+                  path('user/', UserViewSet.as_view({'post': 'post'}), name='user'),
+                  path('api/', include(router.urls)),
+                  path('api/services/', ServicesListView.as_view(), name='services-list'),
               ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 

@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 import os
 
+from django.contrib import staticfiles
 from django.template.context_processors import static
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -43,8 +44,10 @@ INSTALLED_APPS = [
     'military.apps.MilitaryConfig',
     'military_division',
     'rest_framework',
+    'rest_framework.authtoken',
     'django_filters',
     'drf_yasg',
+    'corsheaders',
 ]
 
 MINIO = {
@@ -53,17 +56,36 @@ MINIO = {
     'SECRET_KEY': 'minioadmin',
     'BUCKET_NAME': 'militarydivision',
 }
-REDIS_HOST = '0.0.0.0'
-REDIS_PORT = 6379
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+]
+
+#REDIS_HOST = '172.17.0.2'
+#REDIS_PORT = 6379
+#REDIS_DB = 0
+#CACHES = {
+   # "default": {
+       # "BACKEND": "django.core.cache.backends.redis.RedisCache",
+       # "LOCATION": "redis://127.0.0.1:6379/0",  # добавьте номер базы данных
+       # "OPTIONS": {
+            #"client_class": "django_redis.client.DefaultClient",  # измените параметр
+       # }
+    #}
+#}
+
+SESSION_ENGINE = "django.contrib.sessions.backends.db"
+#SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+#SESSION_CACHE_ALIAS = "default"
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
-    ],
+    #'DEFAULT_PERMISSION_CLASSES': [
+        #'rest_framework.permissions.IsAuthenticated',
+    #]
 }
 
 AUTH_USER_MODEL = 'military.CustomUser'
@@ -78,17 +100,27 @@ SWAGGER_SETTINGS = {
             'name': 'Authorization',
             'in': 'header'
         }
-    }
+    },
+    'USE_SESSION_AUTH': False,
+    'LOGIN_URL': '/api/login/',
+    'LOGOUT_URL': '/api/logout/'
 }
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000"
+]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    #'military.middleware.RedisAuthMiddleware',
 ]
 
 ROOT_URLCONF = 'military_division.urls'

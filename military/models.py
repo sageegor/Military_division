@@ -2,8 +2,8 @@ from django.contrib.auth.base_user import AbstractBaseUser
 from django.db import models
 from django.contrib.auth.models import User, PermissionsMixin, UserManager
 from django.conf import settings
+from rest_framework.authtoken.models import Token
 from django.utils import timezone
-
 class Division(models.Model):
     name = models.CharField("Название", max_length=255)
     description = models.TextField("Описание")
@@ -74,26 +74,32 @@ class OrderDivision(models.Model):
 class NewUserManager(UserManager):
     def create_user(self, email, password=None, **extra_fields):
         if not email:
-            raise ValueError('User must have an email address')
-
+            raise ValueError('The Email must be set')
         email = self.normalize_email(email)
-        user: CustomUser = self.model(email=email, **extra_fields)
+        user = self.model(email=email, **extra_fields)
         user.set_password(password)
-        user.save(using=self.db)
+        user.save()
         return user
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
-    username = models.CharField (max_length=50, unique=True)
+    id = models.AutoField(primary_key=True)
+    username = models.CharField (max_length=50, unique=True, default='default_username')
     email = models.EmailField(("email адрес"), unique=True)
     password = models.CharField(max_length=255, verbose_name="Пароль")
     is_staff = models.BooleanField(default=False, verbose_name="Является ли пользователь менеджером?")
     is_superuser = models.BooleanField(default=False, verbose_name="Является ли пользователь админом?")
     is_active = models.BooleanField(default=True)  # Обязательное поле!
 
-    USERNAME_FIELD = 'username'
+    USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
 
     objects = NewUserManager()
+
+    def save(self, *args, **kwargs):
+        if not self.username:
+            # Генерируем username из email, если не указан
+            self.username = self.email.split('@')[0]
+        super().save(*args, **kwargs)
 
     class Meta:
         db_table = 'military_customuser'

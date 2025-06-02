@@ -1,116 +1,133 @@
-from datetime import timezone
-from multiprocessing import Value
+from sqlite3 import IntegrityError
 
-from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Q
-from django.forms import IntegerField
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status, permissions, viewsets
-from django.contrib.auth.models import User
-from rest_framework.exceptions import PermissionDenied
-from django_filters.rest_framework import DjangoFilterBackend
-from military_division.permissions import IsAdmin, IsManager
 from .models import Division, Order, OrderDivision, CustomUser
-from .serializers import DivisionSerializer, OrderSerializer, OrderDivisionSerializer, UserSerializer, \
-    ServicesListSerializer, ServicesSerializer
-from minio import Minio
+from .serializers import DivisionSerializer, OrderSerializer, OrderDivisionSerializer, UserSerializer, ServicesListSerializer, ServicesSerializer, LoginSerializer
+from datetime import timezone
 from django.conf import settings
-import uuid
-import os
-from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
-from drf_yasg.utils import swagger_auto_schema
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth import authenticate as django_authenticate
+from django.contrib.auth import login as django_login
+from django.contrib.auth.models import User
+from django.db.models import Count, Q
+from django.forms import IntegerField
 from django.http import HttpResponse
-from rest_framework.permissions import IsAuthenticated, AllowAny, IsAuthenticatedOrReadOnly
+from django.http import JsonResponse
+from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
+from django_filters.rest_framework import DjangoFilterBackend
+from drf_yasg.utils import swagger_auto_schema
+from military_division.permissions import IsAdmin, IsManager
+from minio import Minio
+from multiprocessing import Value
+from rest_framework import status, permissions, viewsets
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication
-from rest_framework.decorators import authentication_classes, permission_classes, api_view
-import redis
+from rest_framework.authtoken.models import Token
+from rest_framework.decorators import api_view, permission_classes, action
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import AllowAny, IsAuthenticated, BasePermission, IsAuthenticatedOrReadOnly
+from rest_framework.response import Response
+from rest_framework.views import APIView
+import os
+#import redis
+import uuid
 
 MINIO_URL = "http://127.0.0.1:9000/buckets/militarydivision"
-session_storage = redis.StrictRedis(host=settings.REDIS_HOST, port=settings.REDIS_PORT)
-REDIS_HOST = 'localhost'  # or '127.0.0.1'
-REDIS_PORT = 6379
 
-@permission_classes([AllowAny])
-@authentication_classes([])
+# Инициализация Redis
+#redis_client = redis.Redis(
+   # host=settings.REDIS_HOST,
+    #port=settings.REDIS_PORT,
+    #db=settings.REDIS_DB,
+    #socket_connect_timeout=3
+#)
+
 @csrf_exempt
-@swagger_auto_schema(method='post', request_body=UserSerializer)
-@api_view(['Post'])
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register_view(request):
+    serializer = UserSerializer(data=request.data)
+    if serializer.is_valid():
+        user = serializer.save()
+        return Response({
+            'status': 'success',
+            'user_id': user.id,
+            'username': user.username
+        }, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@swagger_auto_schema(
+    method='post',
+    request_body=LoginSerializer,
+    responses={
+        200: 'Successful authentication',
+        401: 'Invalid credentials'
+    }
+)
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([AllowAny])
 def login_view(request):
-    username = request.data["email"]
-    password = request.data["password"]
-    user = authenticate(request, email=username, password=password)
-    if user is not None:
-        random_key = uuid.uuid4()
-        session_storage.set(str(random_key), username)
+    serializer = LoginSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=400)
 
-        response = HttpResponse("{'status': 'ok'}")
-        response.set_cookie("session_id", str(random_key))
+    email = serializer.validated_data['email']
+    password = serializer.validated_data['password']
 
-        return response
-    else:
-        return HttpResponse("{'status': 'error', 'error': 'login failed'}")
+    user = authenticate(request, email=email, password=password)
+    if user:
+        token, _ = Token.objects.get_or_create(user=user)
+        return Response({
+            'status': 'success',
+            'user_id': user.id,
+            'token': token.key,
+        })
+    return Response({'error': 'Invalid credentials'}, status=401)
 
-
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def logout_view(request):
-    logout(request._request)
-    return Response({'status': 'Success'})
+    # Удаляем токен, если он существует
+    Token.objects.filter(user=request.user).delete()
+    logout(request)  # Стандартный выход Django
+    return Response({'status': 'success'})
+
+class IsAuthenticatedOrReadServices(BasePermission):
+    def has_permission(self, request, view):
+        if request.method == 'GET' and view.__class__.__name__ == 'ServicesListView':
+            return True
+        return request.user and request.user.is_authenticated
 
 class UserViewSet(viewsets.ModelViewSet):
-    """Класс, описывающий методы работы с пользователями
-    Осуществляет связь с таблицей пользователей в базе данных
-    """
     queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
 
-    def get_permissions(self):
-        if self.action in ['post']:
-            permission_classes = [AllowAny]
-        elif self.action in ['list']:
-            permission_classes = [IsAdmin | IsManager]
-        else:
-            permission_classes = [IsAdmin]
-        return [permission() for permission in permission_classes]
-
-    def method_permission_classes(classes):
-        def decorator(func):
-            def decorated_func(self, *args, **kwargs):
-                self.permission_classes = classes
-                self.check_permissions(self.request)
-                return func(self, *args, **kwargs)
-
-            return decorated_func
-
-        return decorator
-
-    model_class = CustomUser
-
-    def post(self, request):
-        """
-        Функция регистрации новых пользователей
-        Если пользователя c указанным в request email ещё нет, в БД будет добавлен новый пользователь.
-        """
-        if self.model_class.objects.filter(email=request.data['email']).exists():
-            return Response({'status': 'Exist'}, status=400)
-        serializer = self.serializer_class(data=request.data)
-        if serializer.is_valid():
-            print(serializer.data)
-            self.model_class.objects.create_user(email=serializer.data['email'],
-                                                 password=serializer.data['password'],
-                                                 is_superuser=serializer.data['is_superuser'],
-                                                 is_staff=serializer.data['is_staff'])
-            return Response({'status': 'Success'}, status=200)
-        return Response({'status': 'Error', 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    def register(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            user = serializer.save()
+            return Response({
+                'status': 'success',
+                'user_id': user.id,
+                'username': user.username
+            }, status=status.HTTP_201_CREATED)
+        except IntegrityError as e:
+            return Response({
+                'status': 'error',
+                'message': 'Username or email already exists'
+            }, status=status.HTTP_400_BAD_REQUEST)
 
 class ServicesListView(APIView):
     authentication_classes = [SessionAuthentication, BasicAuthentication]
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
+    def get(self, request, session_storage=None):
         session_id = request.COOKIES.get('session_id')
 
         if not session_id or not session_storage.get(session_id):
@@ -197,17 +214,34 @@ def get_current_user():
     return user
 
 class DivisionList(APIView):
+    permissions_classes = [AllowAny] # Разрешаем доступ без авторизации
+
+    @swagger_auto_schema(
+        operation_description="Получить список всех подразделений (доступ без авторизации)",
+        security=[]  # Явно отключаем требования безопасности для этого метода
+    )
     def get(self, request):
         queryset = Division.objects.filter(is_active=True)
         serializer = DivisionSerializer(queryset, many=True)
         return Response(serializer.data)
 
     def post(self, request):
+        # POST оставляем только для авторизованных
+        if not request.user.is_authenticated:
+            return Response({'error': 'Authentication required'}, status=401)
         serializer = DivisionSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def divisions_list(request):
+        if request.method == 'OPTIONS':
+            response = JsonResponse({})
+            response['Access-Control-Allow-Origin'] = 'http://localhost:3000'
+            response['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+            response['Access-Control-Allow-Headers'] = 'Content-Type'
+            return response
 
 class DivisionDetail(APIView):
     def get_object(self, pk):
@@ -275,6 +309,7 @@ class DivisionImageUpload(APIView):
 
         return Response({'image_url': division.image_url})
 
+@permission_classes([IsAuthenticated])
 class OrderList(APIView):
     def get(self, request):
         queryset = Order.objects.exclude(status='deleted')

@@ -3,12 +3,32 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from .models import Division, Order, OrderDivision, CustomUser
 from django.urls import reverse
+from django.contrib.auth.hashers import make_password
 
 User = get_user_model()
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
-        model = User
-        fields = ['id', 'username']
+        model = CustomUser
+        fields = ['id', 'username', 'email', 'password', 'is_staff', 'is_superuser']
+        extra_kwargs = {'password': {'write_only': True}, 'username': {'required': True}}
+
+    def validate(self, data):
+        if not data.get('username'):
+            raise serializers.ValidationError("Username is required")
+        return data
+
+    def create(self, validated_data):
+        if not validated_data.get('username'):
+            validated_data['username'] = validated_data['email'].split('@')[0]
+
+        user = CustomUser.objects.create_user(
+            username=validated_data['username'],
+            email=validated_data['email'],
+            password=validated_data['password'],
+            is_staff=validated_data.get('is_staff', False),
+            is_superuser=validated_data.get('is_superuser', False)
+        )
+        return user
 
 class DivisionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -46,11 +66,20 @@ class ServicesSerializer(serializers.ModelSerializer):
         return new_fields
 
 class UserSerializer(serializers.ModelSerializer):
-    is_staff = serializers.BooleanField(default=False, required=False)
-    is_superuser = serializers.BooleanField(default=False, required=False)
     class Meta:
         model = CustomUser
-        fields = ['email', 'password', 'is_staff', 'is_superuser']
+        fields = ['id', 'username', 'email', 'password', 'is_staff', 'is_superuser']
+        extra_kwargs = {'password': {'write_only': True}}
+
+    def create(self, validated_data):
+        user = CustomUser.objects.create_user(
+            username=validated_data['username'],
+            email=validated_data['email'],
+            password=validated_data['password'],
+            is_staff=validated_data.get('is_staff', False),
+            is_superuser=validated_data.get('is_superuser', False)
+        )
+        return user
 
 class ServicesListSerializer(ServicesSerializer):
     draft_id = serializers.SerializerMethodField()
@@ -67,4 +96,12 @@ class ServicesListSerializer(ServicesSerializer):
         if obj.image_url:
             return obj.image_url
         return None
+
+class LoginSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+    password = serializers.CharField(
+        style={'input_type': 'password'},
+        trim_whitespace=False,
+        required=True
+    )
 
